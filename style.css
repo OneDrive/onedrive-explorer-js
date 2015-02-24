@@ -1,0 +1,90 @@
+#od-json {
+  overflow: hidden;
+  float: right;
+  max-width: 40%;
+}
+
+#od-items {
+  max-width: 60%;
+  float: left;
+}
+
+#od-breadcrumb {
+  margin-bottom: 1em;
+}
+
+#od-loading {
+  background: rgba(255,255,255,.8) url('https://onedrive.github.io/odx/spinner_grey_40_transparent.gif') 50% 50% no-repeat;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  z-index: 10;
+  display: none;
+}
+
+body.loading #od-loading {
+  display: block;
+}
+
+.item {
+  display: inline-block;
+  width: 200px;
+  height: 150px;
+  margin: 0.1em;
+  margin-top: 0.05em;
+  margin-bottom: 0.05em;
+  cursor: pointer;
+  background-color: lightgray;
+  border: 1px solid #094AB2;
+  overflow: hidden;
+  position: relative;
+}
+
+.nameplate {
+    /*background-color: #094AB2;*/
+    color: white;
+    width: 200px;
+    height: 16px;
+    padding: 1px;
+    position: absolute;
+    bottom: 0px;
+}
+
+.folder {
+  background-color: #094AB2;
+  color: white;
+}
+
+img {
+  height:auto;
+  width:auto;
+  max-width:200px;
+  max-height:150px;
+}
+
+.oneup {
+  width:  auto;
+  height: auto;
+  max-width:  1600px;
+  max-height: 1200px;
+  min-width:  200px;
+  min-height: 150px;
+}
+
+.oneup img {
+  max-width: 1600px;
+  max-height: 1200px;
+}
+
+.hidden {
+  display: none;
+}
+
+pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
+.string { color: green; }
+.number { color: darkorange; }
+.boolean { color: blue; }
+.null { color: magenta; }
+.key { color: red; }

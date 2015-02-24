@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>onedrive explorer</title>
+  <link rel="stylesheet" type="text/css" href="style.css"/>
+  <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+  <script id="odauth" src="odauth.js"
+   clientId="0000000048144E4F" scopes="onedrive.readonly wl.signin"
+   redirectUri="https://onedrive.github.io/odx/callback.html"></script>
+</head>
+<body>
+  <div id="od-loading"></div>
+  <div id="od-breadcrumb"></div>
+  <div id="od-content">
+    <div id="od-items" class="od-pagecol"></div>
+    <div id="od-json" class="od-pagecol"></div>
+  </div>
+  <script>
+    // we use the url fragment to specify the file path within onedrive
+    // (eg. #/pictures/foo.jpg), so we bind to the hashchange event to
+    // know when it changes. in cases where we change the hash from
+    // within this app due to a user click, we call odauth ourselves and
+    // pre-set loadedFromHash to the new value so that this handler doesn't
+    // call odauth() again. this is so that we handle the auth popup properly.
+    // odauth can either be called in response to a user click (in which)
+    // case it's allowed to pop up an auth dialog, or with no user click,
+    // in which case it's only allowed to show a 'sign-in' button (if it
+    // tried to pop up a window, most browsers' popup blockers would block it).
+    // this handler needs to call odauth in non-click mode since it doesn't
+    // know why the hash changed.
+    var loadedForHash = "";
+    $(window).bind('hashchange', function() {
+      if (window.location.hash != loadedForHash) {
+        loadedForHash = window.location.hash;
+        odauth();
+      }
+
+     return false;
+    });
+
+    // we bind to jquery's ajax start/stop events so that we can style the
+    // page differently when a network call is being made
+    $(document).on({
+      ajaxStart: function() {$('body').addClass('loading');},
+      ajaxStop:  function() {$('body').removeClass('loading');}
+    });
+
+    // based on http://jsfiddle.net/KJQ9K/554/
+    function syntaxHighlight(obj) {
+      var json = JSON.stringify(obj, undefined, 2)
+      json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+        function (match) {
+          var cls = 'number';
+          if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+              cls = 'key';
+            } else {
+              cls = 'string';
+            }
+          } else if (/true|false/.test(match)) {
+            cls = 'boolean';
+          } else if (/null/.test(match)) {
+            cls = 'null';
+          }
+          return '<span class="' + cls + '">' + match + '</span>';
+        });
+    }
+
+    // called to update the breadcrumb bar at the top of the page
+    function updateBreadcrumb(decodedPath) {
+      var path = decodedPath || '';
+      $('#od-breadcrumb').empty();
+      var runningPath = '';
+      var segments = path.split('/');
+      for (var i = 0 ; i < segments.length; i++) {
+        if (i > 0) {
+          $('<span>').text(' > ').appendTo("#od-breadcrumb");
+        }
+
+        var segment = segments[i];
+        if (segment) {
+          runningPath = runningPath + '/' + encodeURIComponent(segment);
+        } else {
+          segment = 'root';
+        }
+
+        $('<a>').
+          attr("href", "#" + runningPath).
+          click(function() {
+            // when the page changes in response to a user click,
+            // we set loadedForHash to the new value and call
+            // odauth ourselves in user-click mode. this causes
+            // the catch-all hashchange event handler not to
+            // process the page again. see comment at the top.
+            loadedForHash = $(this).attr('href');
+            window.location = loadedForHash;
+            odauth(true);
+          }).
+          text(segment).
+          appendTo("#od-breadcrumb");
+      }
+    }
+
+    // odauth calls our onAuthenticated method to give us the user's auth token.
+    // in this demo app we just use this as the method to drive the page logic
+    function onAuthenticated(token, authWindow) {
+      if (token) {
+        if (authWindow) {
+          removeLoginButton();
+          authWindow.close();
+        }
+
+        (function($){
+          // we extract the onedrive path from the url fragment and we
+          // flank it with colons to use the api's path-based addressing scheme
+          var path = "";
+          var beforePath = "";
+          var afterPath = "";
+          if (window.location.hash) {
+            path = window.location.hash.substr(1);
+            beforePath =":";
+            afterPath = ":";
+          }
+
+          var odurl = "https://api.onedrive.com/v1.0/drive/root" + beforePath + path + afterPath;
+
+          // the expand and select parameters mean:
+          //  "for the item i'm addressing, include its thumbnails and children,
+          //   and for each of the children, include its thumbnails. for those
+          //   thumbnails, return the 'large' and 'c200x150_Crop' sizes"
+          // we also attach the access token as a query parameter to every request.
+          // we could also pass it in through the 'Authorization: bearer' header,
+          // but that would result in an extra CORS preflight request for every
+          // unique path.
+          var odquery = "?expand=thumbnails,children(expand=thumbnails(select=large,c200x150_Crop))&access_token=" + token;
+
+          $.ajax({
+            url: odurl + odquery,
+            dataType: 'json',
+            success: function(data) {
+              if (data) {
+                // clear out the old content
+                $('#od-items').empty();
+                $('#od-json').empty();
+
+                // add the syntax-highlighted json response
+                $("<pre>").html(syntaxHighlight(data)).appendTo("#od-json");
+
+                // process the response data. if we get back children (data.children)
+                // then render the tile view. otherwise, render the "one-up" view
+                // for the item's individual data. we also look for children in
+                // 'data.value' because if this app is ever configured to reqeust
+                // '/children' directly instead of '/parent?expand=children', then
+                // they'll be in an array called 'data'
+                var decodedPath = decodeURIComponent(path);
+                document.title = "1drv " + decodedPath;
+                updateBreadcrumb(decodedPath);
+                var children = data.children || data.value;
+                if (children && children.length > 0) {
+                  $.each(children, function(i,item) {
+                    var tile = $("<div>").
+                      attr("href", "#" + path + "/" + encodeURIComponent(item.name)).
+                      addClass("item").
+                      click(function() {
+                        // when the page changes in response to a user click,
+                        // we set loadedForHash to the new value and call
+                        // odauth ourselves in user-click mode. this causes
+                        // the catch-all hashchange event handler not to
+                        // process the page again. see comment at the top.
+                        loadedForHash = $(this).attr('href');
+                        window.location = loadedForHash;
+                        odauth(true);
+                      }).
+                      appendTo("#od-items");
+
+                    // look for various facets on the items and style them accordingly
+                    if (item.folder) {
+                      tile.addClass("folder");
+                    }
+
+                    if (item.thumbnails && item.thumbnails.length > 0) {
+                      $("<img>").
+                        attr("src", item.thumbnails[0].c200x150_Crop.url).
+                        appendTo(tile);
+                    }
+
+                    $("<div>").
+                      addClass("nameplate").
+                      text(item.name).
+                      appendTo(tile);
+                  });
+                }
+                else {
+                  // 1-up view
+                  var tile = $("<div>").
+                    addClass("item").
+                    addClass("oneup").
+                    appendTo("#od-items");
+
+                  var downloadUrl = data['@content.downloadUrl'];
+                  if (downloadUrl) {
+                    tile.click(function(){window.location = downloadUrl;});
+                  }
+
+                  if (data.folder) {
+                    tile.addClass("folder");
+                  }
+
+                  if (data.thumbnails && data.thumbnails.length > 0) {
+                    $("<img>").
+                      attr("src", data.thumbnails[0].large.url).
+                      appendTo(tile);
+                  }
+                }
+              } else {
+                $('#od-items').empty();
+                $('<p>error.</p>').appendTo('#od-items');
+                $('#od-json').empty();
+              }
+            }
+          });
+        })(jQuery);
+      }
+      else {
+        alert("Error signing in");
+      }
+    }
+
+    // start the whole thing off by calling odauth() in non-click mode.
+    // if the user isn't logged in already, a sign-in link will appear
+    // for them to click.
+    odauth();
+  </script>
+</body>
+</html>
