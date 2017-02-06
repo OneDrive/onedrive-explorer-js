@@ -1,5 +1,25 @@
+#od-site {
+  background-color: #094AB2; 
+  color: white;
+  width: 100%;
+  height: 50px;
+  font-size: 24pt;
+  font-family: 'Segoe UI Light', sans-serif;
+  margin-bottom: 10px; 
+  padding-left: 10px;
+}
+#od-commands {
+  float: right;
+  margin-right: 10pt;
+}
+
+#od-commands a {
+  text-decoration: none;
+  color: white;
+  font-size: 12pt;
+}
+
 #od-json {
-  overflow: hidden;
   float: right;
   max-width: 40%;
 }
@@ -11,10 +31,17 @@
 
 #od-breadcrumb {
   margin-bottom: 1em;
+  font-family: 'Segoe UI Light', sans-serif;
+  font-size: 16pt;
+}
+
+#od-breadcrumb a {
+    text-decoration: none;
+    color: black;
 }
 
 #od-loading {
-  background: rgba(255,255,255,.8) url('https://onedrive.github.io/odx/spinner_grey_40_transparent.gif') 50% 50% no-repeat;
+  background: rgba(255,255,255,.8) url('spinner_grey_40_transparent.gif') 50% 50% no-repeat;
   position: fixed;
   top: 0;
   left: 0;
@@ -28,6 +55,10 @@ body.loading #od-loading {
   display: block;
 }
 
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 .item {
   display: inline-block;
   width: 200px;
@@ -36,20 +67,26 @@ body.loading #od-loading {
   margin-top: 0.05em;
   margin-bottom: 0.05em;
   cursor: pointer;
-  background-color: lightgray;
+  background-color: hsla(0, 0%, 95%, 1);
   border: 1px solid #094AB2;
   overflow: hidden;
   position: relative;
+  font-family: 'segoe ui';
+  font-size: 12pt;
 }
 
 .nameplate {
-    /*background-color: #094AB2;*/
-    color: white;
-    width: 200px;
-    height: 16px;
+    /* background-color: #094AB2; */
+    /* width: 200px; */
+    height: 16pt;
     padding: 1px;
     position: absolute;
-    bottom: 0px;
+    bottom: 2px;
+    left:  4px;
+    white-space: nowrap;
+    padding-right: 4px;
+    overflow:  hidden;
+    right:  4px;
 }
 
 .folder {
@@ -57,11 +94,23 @@ body.loading #od-loading {
   color: white;
 }
 
+.file {
+  color: black;
+}
+
 img {
   height:auto;
-  width:auto;
+  width: auto;
   max-width:200px;
-  max-height:150px;
+  /* max-height:150px; */
+  /* height:  150px; */
+  overflow: hidden;
+  /* visibility: hidden; */
+}
+
+.img-container {
+  max-height: 126px;
+  overflow: hidden;
 }
 
 .oneup {
@@ -82,9 +131,9 @@ img {
   display: none;
 }
 
-pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
-.string { color: green; }
-.number { color: darkorange; }
-.boolean { color: blue; }
+pre {outline: 1px solid #ccc;padding: 5px;margin: 5px;overflow: scroll;height: 600px;white-space: pre;}
+.string { color: blue; }
+.number { color: red; }
+.boolean { color: green; }
 .null { color: magenta; }
-.key { color: red; }
+.key { color: black; }

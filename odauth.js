@@ -46,7 +46,7 @@ function odauth(wasClicked) {
 
 // for added security we require https
 function ensureHttps() {
-  if (window.location.protocol != "https:") {
+  if (window.location.protocol != "https:" && window.location.protocol != "file:" && window.location.hostname != "localhost") {
     window.location.href = "https:" + window.location.href.substring(window.location.protocol.length);
   }
 }
@@ -55,15 +55,18 @@ function onAuthCallback() {
   var authInfo = getAuthInfoFromUrl();
   var token = authInfo["access_token"];
   var expiry = parseInt(authInfo["expires_in"]);
-  setCookie(token, expiry);
-  window.opener.onAuthenticated(token, window);
+  if (token)
+  {
+    setCookie(token, expiry);
+    window.opener.onAuthenticated(token, window);
+  }
 }
 
 function getAuthInfoFromUrl() {
   if (window.location.hash) {
     var authResponse = window.location.hash.substring(1);
     var authInfo = JSON.parse(
-      '{"' + authResponse.replace(/&/g, '","').replace(/=/g, '":"') + '"}',
+      '{' + authResponse.replace(/([^=]+)=([^&]+)&?/g, '"$1":"$2",').slice(0,-1) + '}',
       function(key, value) { return key === "" ? value : decodeURIComponent(value); });
     return authInfo;
   }
@@ -105,7 +108,25 @@ function setCookie(token, expiresInSeconds) {
   document.cookie = cookie;
 }
 
+function clearCookie()
+{
+  var expiration = new Date();
+  var cookie = "odauth=; path=/; expires=" + expiration.toUTCString();
+  document.cookie = cookie;
+}
+
+var storedAppInfo = null;
+
+function provideAppInfo(obj)
+{
+  storedAppInfo = obj;
+}
+
 function getAppInfo() {
+
+  if (storedAppInfo)
+    return storedAppInfo;
+
   var scriptTag = document.getElementById("odauth");
   if (!scriptTag) {
     alert("the script tag for odauth.js should have its id set to 'odauth'");
@@ -117,26 +138,35 @@ function getAppInfo() {
   }
 
   var scopes = scriptTag.getAttribute("scopes");
-  if (!scopes) {
-    alert("the odauth script tag needs a scopes attribute set to the scopes your app needs");
-  }
+  // scopes aren't always required, so we don't warn here.
 
   var redirectUri = scriptTag.getAttribute("redirectUri");
   if (!redirectUri) {
     alert("the odauth script tag needs a redirectUri attribute set to your redirect landing url");
   }
 
+  var resourceUri = scriptTag.getAttribute("resourceUri");
+
+  var authServiceUri = scriptTag.getAttribute("authServiceUri");
+  if (!authServiceUri) {
+    alert("the odauth script tag needs an authServiceUri attribtue set to the oauth authentication service url");
+  }
+
   var appInfo = {
     "clientId": clientId,
     "scopes": scopes,
-    "redirectUri": redirectUri
+    "redirectUri": redirectUri,
+    "resourceUri": resourceUri,
+    "authServiceUri": authServiceUri
   };
+
+  storedAppInfo = appinfo;
 
   return appInfo;
 }
 
 // called when a login button needs to be displayed for the user to click on.
-// if a customLoginButton() function is defined by your app, it will be called
+// if a showCustomLoginButton() function is defined by your app, it will be called
 // with 'true' passed in to indicate the button should be added. otherwise, it
 // will insert a textual login link at the top of the page. if defined, your
 // showCustomLoginButton should call challengeForAuth() when clicked.
@@ -150,7 +180,7 @@ function showLoginButton() {
   loginText.href = "#";
   loginText.id = "loginText";
   loginText.onclick = challengeForAuth;
-  loginText.innerText = "[sign in]";
+  loginText.innerText = loginText.textContent = "[sign in]";
   document.body.insertBefore(loginText, document.body.children[0]);
 }
 
@@ -173,12 +203,22 @@ function removeLoginButton() {
 function challengeForAuth() {
   var appInfo = getAppInfo();
   var url =
-    "https://login.live.com/oauth20_authorize.srf" +
+    appInfo.authServiceUri +
     "?client_id=" + appInfo.clientId +
-    "&scope=" + encodeURIComponent(appInfo.scopes) +
     "&response_type=token" +
     "&redirect_uri=" + encodeURIComponent(appInfo.redirectUri);
+
+    if (appInfo.scopes)
+      url = url + "&scope=" + encodeURIComponent(appInfo.scopes);
+    if (appInfo.resourceUri)
+      url = url + "&resource=" + encodeURIComponent(appInfo.resourceUri);
+
   popup(url);
+}
+
+function logoutOfAuth() {
+  clearCookie();
+  showLoginButton();
 }
 
 function popup(url) {
