@@ -15,13 +15,15 @@
       var appInfo = {
         "clientId": "e9a57c07-69e4-41f5-b868-0f123d2fda17",
         "redirectUri": "http://localhost:9999/callback.html",
-        "scopes": "user.read files.read",
+        "scopes": "user.read files.read files.read.all sites.read.all",
         "authServiceUri": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
       };
       provideAppInfo(appInfo);
 
       // use Microsoft Graph v1.0
-      msGraphApiRoot = "https://graph.microsoft.com/v1.0/me";
+      var baseUrl = getQueryVariable("baseUrl")
+      msGraphApiRoot = (baseUrl) ? baseUrl : "https://graph.microsoft.com/v1.0/me";
+      
       challengeForAuth();
 
       saveToCookie( { "apiRoot": msGraphApiRoot, "signedin": true } );
@@ -130,12 +132,14 @@
     <div id="od-json" class="od-pagecol"></div>
   </div>
   <script>
-    var msGraphApiRoot = "https://graph.microsoft.com/v1.0/me";
+    var baseUrl = getQueryVariable("baseUrl")
+    msGraphApiRoot = (baseUrl) ? baseUrl : "https://graph.microsoft.com/v1.0/me";
 
     var data = loadFromCookie();
     if (data)
     {
-      msGraphApiRoot = data.apiRoot;
+      if (!baseUrl)
+        msGraphApiRoot = data.apiRoot;
       showCustomLoginButton(!data.signedin)
     }
 
