@@ -1,3 +1,13 @@
+---
+page_type: sample
+products:
+- office-onedrive
+languages:
+- html
+extensions:
+  contentType: samples
+  createdDate: 2/23/2015 9:52:11 PM
+---
 # OneDrive Explorer sample web app
 
 This sample illustrates the basic concepts for interacting with OneDrive via Microsoft Graph API to create a file explorer web app.
